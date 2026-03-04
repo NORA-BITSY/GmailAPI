@@ -1,8 +1,15 @@
-# Export Logic & Data Integrity (v2.0)
+# Export Logic & Data Integrity
 
-The Gmail Forensic Export tool is built on the **Dual-Stream Output Mandate**. It separates raw evidentiary data from human-readable investigative narratives to ensure courtroom defensibility.
+## 🧭 Sub-Northstar: Unassailable Evidence
+The export engine must bridge the gap between "Digital Bits" and "Legal Evidence." It is the custodian of the **Chain of Custody**.
+*   **Goal**: Ensure no data is lost, altered, or misinterpreted during the transition from the cloud to the local evidence locker.
+*   **Outcome**: A Dual-Stream output where the **Lockbox** (Archive) is identical to the source, and the **Story** (Narrative) is clear to humans.
+*   **Non-Goal**: We do not "clean" or "normalize" raw data; if the evidence is malformed, we capture it malformed to maintain forensic truth.
+
+---
 
 ## 1. Contextual Search (Thread Expansion)
+...
 
 Unlike standard search tools, this system prioritizes **Contextual Completeness**.
 1.  **Initial Search**: Executes targeted queries (Domains, Names, Case Numbers, Keywords) to find matching messages.

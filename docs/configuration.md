@@ -1,8 +1,15 @@
 # Configuration Guide (`config.yml`)
 
-The `config.yml` file is the master blueprint for the forensic export. It defines the **Search Space**—the legal boundaries of your investigation.
+## 🧭 Sub-Northstar: Defining the Search Space
+The configuration file is the **legal boundary** of the investigation. It must be precise enough to protect privacy and surgical enough to eliminate noise.
+*   **Goal**: Translate legal mandates (entities, dates, keywords) into executable machine queries.
+*   **Outcome**: A reproducible search configuration that defines the exact scope of the "Truth" we are seeking.
+*   **Non-Goal**: Configuration is not for "optimizing speed"; it is for **optimizing relevance**.
+
+---
 
 ## Core Sections
+...
 
 ### `gmail`
 *   **`credentials_path`**: Path to your Google Cloud Desktop OAuth credentials.

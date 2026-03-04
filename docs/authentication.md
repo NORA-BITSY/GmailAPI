@@ -1,8 +1,15 @@
 # Authentication Guide
 
-This guide explains how to authenticate the Gmail Forensic Export tool, especially in headless or remote environments.
+## 🧭 Sub-Northstar: Secure & Auditable Access
+The goal of the authentication system is to provide **non-repudiable access** to data while ensuring that investigation credentials never leak into the evidentiary archive.
+*   **Goal**: Ensure the "Who" and "When" of the collection is as verifiable as the data itself.
+*   **Outcome**: A `token.json` that is strictly isolated from the archive, yet logged in the system's audit trail.
+*   **Non-Goal**: We do not store user passwords or long-term secrets; we rely exclusively on short-lived, revocable OAuth tokens.
+
+---
 
 ## Overview
+...
 
 Authentication is a multi-step process that utilizes Google OAuth 2.0. The repository contains several helper scripts to facilitate this:
 
