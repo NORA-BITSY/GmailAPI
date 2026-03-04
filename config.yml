@@ -1,0 +1,66 @@
+gmail:
+  credentials_path: /home/ubuntu/credentials.json
+  token_path: /home/ubuntu/token.json
+  scopes:
+    - https://www.googleapis.com/auth/gmail.readonly
+
+export:
+  include_spam: true
+  include_trash: true
+  download_attachments: true
+  max_attachment_size_mb: 25
+  attachment_extensions_priority:
+    - .pdf
+    - .doc
+    - .docx
+    - .eml
+    - .msg
+    - .csv
+    - .txt
+    - .jpg
+    - .png
+    - .gif
+    - .tif
+
+search:
+  date_range_start: "2023-01-01"
+  date_range_end: null  # null = today
+
+targets:
+  domains:
+    - co.pierce.wi.us
+    - wicourts.gov
+    - wisconsin.gov
+  names:
+    - Lars Loberg
+    - Megan Johnson
+    - Kim Stensland
+    - Kendra Kinneman
+    - Dustin Klanderman
+    - Shawn Harrington
+    - Joel Larimore
+    - Halle Hatch
+    - Amber Han
+    - Matthew Kirkpatrick
+  case_numbers:
+    - "2024JC000051"
+    - "2025CF000089"
+    - "46-CR-25-845"
+    - "2025FA000041"
+
+critical_windows:
+  retaliation_window:
+    start: "2025-09-14T00:00:00"
+    end:   "2025-09-15T23:59:59"
+    tag:   "RETALIATION_WINDOW_CRITICAL"
+  google_meet_context:
+    start: "2025-08-05T00:00:00"
+    end:   "2025-08-07T23:59:59"
+    tag:   "GOOGLE_MEET_CONTEXT"
+
+reliability:
+  cache_db: /home/ubuntu/export_cache.db
+  rate_limit_units_per_second: 200
+  max_retries: 5
+  batch_size: 100
+  checkpoint_interval: 500
