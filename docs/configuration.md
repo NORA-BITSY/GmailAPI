@@ -1,44 +1,39 @@
 # Configuration Guide (`config.yml`)
 
-The `config.yml` file is the central control point for the Gmail Forensic Export tool. It defines what to search for, how to export it, and the operational parameters of the system.
+The `config.yml` file is the master blueprint for the forensic export. It defines the **Search Space**—the legal boundaries of your investigation.
 
-## Sections
+## Core Sections
 
 ### `gmail`
-- **`credentials_path`**: Absolute or relative path to your `credentials.json` file.
-- **`token_path`**: Where to save/read the OAuth `token.json` file.
-- **`scopes`**: The permissions the tool will request (defaults to `gmail.readonly`).
+*   **`credentials_path`**: Path to your Google Cloud Desktop OAuth credentials.
+*   **`token_path`**: Destination for the active OAuth token.
 
 ### `export`
-- **`include_spam`**: Boolean. If true, include spam messages in the search.
-- **`include_trash`**: Boolean. If true, include trash in the search.
-- **`download_attachments`**: Boolean. Whether to download and verify message attachments.
-- **`max_attachment_size_mb`**: Maximum size of a single attachment to download (e.g., `25`).
-- **`attachment_extensions_priority`**: A list of extensions (e.g., `.pdf`, `.docx`) that the tool will prioritize for forensic collection.
+*   **`download_attachments`**: Enables/disables attachment collection.
+*   **`max_attachment_size_mb`**: Critical for bypassing large, irrelevant files (e.g., video files) while ensuring legal documents are captured.
+*   **`attachment_extensions_priority`**: Limits collection to legally relevant formats (PDF, DOCX, EML, etc.).
 
-### `search`
-- **`date_range_start`**: Start date for extraction (Format: `YYYY-MM-DD`).
-- **`date_range_end`**: End date for extraction (defaults to `null` which is today).
+### `search` (The Temporal Boundary)
+*   **`date_range_start`**: Messages sent before this date are ignored.
+*   **`date_range_end`**: Messages sent after this date are ignored.
 
-### `targets`
-- **`domains`**: List of email domains (e.g., `company.com`) to filter by in `from:` or `to:` fields.
-- **`names`**: Specific people or entities whose names should be included in the search query.
-- **`case_numbers`**: Case reference IDs (e.g., `"2025FA000041"`) to search for within message contents.
-- **`keywords`**: High-value search terms (e.g., `"retaliation"`, `"settlement"`) to target specific areas of investigation.
+### `targets` (The Investigative Scope)
+These parameters define the Gmail search query. The system automatically performs **Thread Expansion** on matches found here.
+*   **`domains`**: Filters by sender/recipient domain.
+*   **`names`**: Filters by specific individual names.
+*   **`case_numbers`**: Searches for specific litigation or reference IDs.
+*   **`keywords`**: Searches for high-value terms (e.g., "retaliation", "dispute").
 
-### `critical_windows`
-These define specific periods of interest that will be tagged in the final forensic timeline.
-- **`start`**: ISO timestamp (e.g., `"2025-09-14T00:00:00"`).
-- **`end`**: ISO timestamp.
-- **`tag`**: The label (e.g., `"RETALIATION_WINDOW"`) to appear in reports for emails sent during this window.
+### `critical_windows` (Narrative Enrichment)
+Defines sub-periods within the search range that require special attention.
+*   Emails falling within these windows are tagged in the `narrative/timelines/` reports.
+*   Useful for highlighting periods surrounding key events (e.g., a specific board meeting or a termination date).
 
 ### `reliability`
-- **`cache_db`**: Path to the SQLite database (`export_cache.db`) that tracks progress and resumption status.
-- **`rate_limit_units_per_second`**: Max API requests per second to avoid Google quota errors (default: `200`).
-- **`max_retries`**: Number of times to retry a failed API request with exponential backoff.
-- **`batch_size`**: Number of message IDs to process in a single batch.
+*   **`cache_db`**: The SQLite state tracker (`export_cache.db`).
+*   **`rate_limit_units_per_second`**: Controls API throughput to prevent 429 errors.
 
-## Best Practices
-1.  **Iterate Small**: Start with a very narrow `date_range_start` to test that the tool is capturing exactly what you expect.
-2.  **Use Quotes**: For case numbers or complex names in `targets`, use double quotes in the YAML (e.g., `"46-CR-25-845"`).
-3.  **Portability**: Use relative paths for `cache_db` if you plan to move the repository.
+---
+
+## Technical Note on Search Space
+Every parameter defined in `targets` and `search` is logged in the final `MANIFEST.json`. This ensures **Negative Auditability**: you can prove to a third party exactly what was requested, and therefore why certain data was excluded from the final evidence package.
