@@ -1,62 +1,50 @@
-# 🌟 North Star Alignment: Gmail Forensic Export System
+# 🌟 North Star: Gmail Forensic Export System (v4.0 - Forensic Stress-Tested)
 
 ## 1. Vision Statement
-To provide a legally defensible, cryptographically verifiable, and highly reliable automated extraction tool for Google Workspace (Gmail) data. The system must empower legal, HR, and forensic investigative teams to precisely target, safely extract, and comprehensively document communication timelines critical to legal proceedings, audits, and compliance reviews.
+To provide an **unassailable evidentiary foundation** for digital investigations. We bridge the gap between "Raw Data" and "Legal Truth" by ensuring that every collection is surgical enough to be relevant, yet contextual enough to be fair.
 
-## 2. Core Mission
-The system operates under the assumption that **every extracted byte may be scrutinized in a legal setting**. Therefore, the extraction process must prioritize data integrity, chain-of-custody documentation, and error transparency above speed or user-interface convenience.
-
----
-
-## 3. The Four Pillars of Alignment
-
-Any future modifications, refactoring, or feature additions **must** align with these four foundational pillars:
-
-### Pillar 1: Defensibility & Data Integrity (The "Chain of Custody")
-*   **Immutability:** Extracted artifacts (bodies, attachments, metadata) must never be altered once written.
-*   **Cryptographic Verification:** Every extracted file must be immediately hashed (SHA-256) and recorded in an immutable `MANIFEST.json`.
-*   **No Silent Failures:** If an attachment cannot be downloaded or a message cannot be parsed, it must be explicitly logged as a failure rather than skipped silently.
-
-### Pillar 2: Precision & Contextual Awareness
-*   **Surgical Extraction:** The system must avoid "data dumping." It should intelligently utilize configuration parameters (target domains, specific individuals, case numbers, and keywords) to extract only what is relevant.
-*   **Temporal Context:** Features like `critical_windows` (e.g., retaliation periods, specific meetings) must be prominent, allowing investigators to quickly surface emails sent during high-stakes timeframes.
-
-### Pillar 3: Unyielding Reliability
-*   **Resilience to API Limits:** The Gmail API imposes strict quotas. The system must respect rate limits, implement exponential backoff, and handle network interruptions gracefully.
-*   **Stateful Resumption:** Large exports can take hours. The SQLite cache (`export_cache.db`) must track progress so the script can be interrupted and resumed without duplicating work or missing messages.
-
-### Pillar 4: Machine & Human Auditability
-*   **Structured Logging:** Operations must be logged in a machine-readable format (JSONL) for automated ingestion into SIEM or log-analysis tools.
-*   **Human-Readable Summaries:** The system must generate clear, actionable artifacts—such as the Markdown timeline and summary report—so non-technical legal staff can immediately understand the output.
+## 2. Core Strategic Goals (The Outcomes)
+*   **Evidentiary Integrity (Non-Repudiation):** The primary outcome is a "frozen" archive. No matter how much time passes, an independent expert must be able to verify that the data matches the state of the source at the exact moment of collection.
+*   **Contextual Completeness:** We recognize that a single "smoking gun" email is useless without the surrounding conversation. Our goal is to collect the **minimum viable context** (threads, replies, referenced docs) required to tell a fair and complete story.
+*   **Negative Auditability:** In forensics, knowing what *isn't* there is as important as what *is*. The system must document the "Search Space"—proving that if an email wasn't collected, it was because it didn't exist within the defined parameters, not because of a system blindspot.
+*   **Surgical Efficiency:** We eliminate "Reviewer Fatigue" by ensuring that 90% of the collected data is relevant to the case, thereby reducing the cost and time of legal review.
 
 ---
 
-## 4. Current State vs. Future Upgrades (Roadmap)
+## 3. Real-World Constraints & Non-Goals
+To avoid "feature creep" that degrades forensic value, we maintain these boundaries:
 
-As the system undergoes various upgrades, development should be prioritized according to this roadmap to maintain alignment with the North Star.
-
-### Phase 1: Enhanced Forensic Deep-Dive (Near Term)
-*   **Thread Reconstruction:** Move beyond individual message extraction to map out full conversation threads, identifying missing messages or deleted replies.
-*   **Drive Link Resolution:** Detect Google Drive/Docs links within emails and (if authorized) extract the linked documents, as these often contain the actual evidence.
-*   **Advanced Attachment Parsing:** Implement OCR for image attachments or automatic text extraction from PDFs to ensure keywords hidden in attachments are flagged.
-
-### Phase 2: Intelligence & Triage (Mid Term)
-*   **Sentiment & Behavioral Analysis:** Utilize NLP to flag emails showing high emotional intensity, aggressive language, or sudden shifts in communication patterns between targets.
-*   **Entity Mapping:** Automatically generate communication graphs (who spoke to whom, and how often) to identify undocumented back-channel communications.
-*   **De-duplication & Thread Collapsing:** Visually collapse standard email signatures, legal disclaimers, and quoted previous messages to reduce investigator reading fatigue.
-
-### Phase 3: Enterprise Scalability & Packaging (Long Term)
-*   **Containerization:** Package the system in a Docker container for reproducible, cross-platform execution without dependency conflicts.
-*   **Multi-Account Extraction (Domain-Wide Delegation):** Upgrade authentication from single-user OAuth to Google Workspace Domain-Wide Delegation (Service Accounts) to allow simultaneous extraction across multiple employee inboxes.
-*   **Review Platform Integration:** Export data directly into standard eDiscovery load file formats (e.g., Relativity, Concordance) rather than relying solely on raw file structures.
+*   **Non-Goal: Real-Time Sync:** We are not a backup solution. We capture a **point-in-time snapshot**. We do not attempt to reflect changes made to the source after the extraction begins.
+*   **Non-Goal: Data "Cleaning":** We do not alter headers, fix malformed MIME, or "beautify" raw evidence. Usability is handled in the **Narrative Layer**, never the **Archive Layer**.
+*   **Non-Goal: Automated Judgment:** The tool flags; it does not judge. We provide indicators (tags, windows, keywords), but we never produce a "Guilty/Innocent" or "True/False" output.
 
 ---
 
-## 5. Upgrade Checklist (The Alignment Test)
+## 4. The Dual-Stream Output Mandate
+To survive a stress test in court, the system must produce two strictly separated streams:
 
-Before merging any future upgrade, ask the following questions:
-1.  *Does this change alter the raw data?* (If yes, reject or isolate to a derivative output).
-2.  *Are all new artifacts added to the cryptographic manifest?*
-3.  *Does this change respect API rate limits and resumption states?*
-4.  *Is the new behavior thoroughly logged in the JSONL audit trail?*
-5.  *Does this feature help legal/investigative teams establish facts faster?*
+1.  **The Forensic Archive (The "Lockbox"):** 
+    *   Raw, untouched JSON metadata and original MIME bodies.
+    *   Cryptographic manifests for every byte.
+    *   **Goal:** Defensibility.
+2.  **The Investigative Narrative (The "Story"):** 
+    *   Extracted text, readable timelines, and tagged windows.
+    *   Search summaries and failure reports.
+    *   **Goal:** Human understanding and speed.
+
+---
+
+## 5. Critical Pitfalls & Blindspots (The "Never" List)
+*   **Never allow "Silent Omissions":** If an attachment is too large or a body is unreadable, it is a **loud failure**. We never assume "no data" means "success."
+*   **Never mix Archive and Narrative:** If a user wants to "redact" a timeline, the redacted version is a new file; the original archive remains untouched.
+*   **Never ignore the "Search Space":** A report that says "0 results found" is incomplete without a list of the exact queries and date ranges that yielded that zero.
+*   **Never assume "API Success" equals "Data Success":** We must cross-validate (e.g., if the metadata says there is a 5MB attachment, but the download is 0 bytes, the system must flag a corruption error).
+
+---
+
+## 6. The "Courtroom" Alignment Test
+Before any update, ask:
+1.  **If a hostile expert witness analyzed this, could they prove I missed data?**
+2.  **Does this update make it easier to prove the data hasn't been tampered with?**
+3.  **Does this feature help the investigator explain *why* this data is relevant?**
+4.  **Are we maintaining the "Lockbox" vs "Story" separation?**

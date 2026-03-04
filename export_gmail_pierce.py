@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 import sqlite3
@@ -65,17 +66,21 @@ class GmailForensicExporter:
     Handles search, authentication, data integrity, and reporting.
     """
     def __init__(self, config_path, export_dir):
-        """Initializes the exporter, sets up directories, and loads configuration."""
+        """Initializes the exporter, sets up forensic directories, and captures environment state."""
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
         self.export_dir = export_dir
-        # Ensure the forensic structure is present
-        os.makedirs(self.export_dir, exist_ok=True)
-        os.makedirs(os.path.join(self.export_dir, 'bodies'), exist_ok=True)
-        os.makedirs(os.path.join(self.export_dir, 'attachments'), exist_ok=True)
-        os.makedirs(os.path.join(self.export_dir, 'timelines'), exist_ok=True)
-        os.makedirs(os.path.join(self.export_dir, 'reports'), exist_ok=True)
+        # Pillar 4: Dual-Stream Structure
+        self.archive_dir = os.path.join(self.export_dir, 'archive')
+        self.narrative_dir = os.path.join(self.export_dir, 'narrative')
+        
+        for d in [self.archive_dir, self.narrative_dir]:
+            os.makedirs(os.path.join(d, 'metadata'), exist_ok=True)
+            os.makedirs(os.path.join(d, 'attachments'), exist_ok=True)
+        
+        os.makedirs(os.path.join(self.narrative_dir, 'timelines'), exist_ok=True)
+        os.makedirs(os.path.join(self.narrative_dir, 'reports'), exist_ok=True)
 
         self.log = ForensicLogger(os.path.join(self.export_dir, 'run_log.jsonl'))
         self.db_path = self.config['reliability']['cache_db']
@@ -83,10 +88,17 @@ class GmailForensicExporter:
         
         self.creds = None
         self.service = None
-        # Initialize the global manifest
+        
+        # Pillar 1: Environmental Context
         self.manifest = {
             "export_id": str(uuid.uuid4()),
             "export_timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "environment": {
+                "os": os.name,
+                "platform": sys.platform,
+                "python_version": sys.version,
+                "user": os.getlogin() if hasattr(os, 'getlogin') else 'unknown'
+            },
             "file_manifest": []
         }
 
@@ -215,28 +227,49 @@ class GmailForensicExporter:
         return queries
 
     def execute_search(self):
+        """
+        Executes search queries and collects unique message IDs for extraction.
+        Pillar 2: Contextual Completeness via Thread Expansion.
+        """
         queries = self.get_search_queries()
-        all_ids = set()
+        all_msg_ids = set()
+        unique_thread_ids = set()
         
+        # Pillar 3: Record search space in manifest for negative auditability
+        self.manifest['search_parameters'] = {
+            "queries": queries,
+            "config_targets": self.config['targets']
+        }
+        
+        # Step 1: Find all threads matching the queries
         for q in queries:
             self.log.info(f"Executing query: {q}")
-            messages = []
             try:
                 request = self.service.users().messages().list(userId='me', q=q)
                 while request is not None:
                     result = self._execute_with_retry(request)
                     if 'messages' in result:
-                        messages.extend(result['messages'])
+                        for m in result['messages']:
+                            unique_thread_ids.add(m['threadId'])
                     request = self.service.users().messages().list_next(request, result)
             except Exception as e:
                 self.log.error(f"Search error for query '{q}': {e}")
-            
-            self.log.info(f"Query returned {len(messages)} results.")
-            for m in messages:
-                all_ids.add(m['id'])
         
-        self.log.info(f"Total unique candidate messages: {len(all_ids)}")
-        return list(all_ids)
+        self.log.info(f"Identified {len(unique_thread_ids)} candidate threads for contextual completeness.")
+
+        # Step 2: Fetch ALL messages for those threads
+        for t_id in tqdm(unique_thread_ids, desc="Expanding Threads"):
+            try:
+                request = self.service.users().threads().get(userId='me', id=t_id)
+                thread = self._execute_with_retry(request)
+                if 'messages' in thread:
+                    for m in thread['messages']:
+                        all_msg_ids.add(m['id'])
+            except Exception as e:
+                self.log.error(f"Thread expansion error for {t_id}: {e}")
+
+        self.log.info(f"Total messages to process (including context): {len(all_msg_ids)}")
+        return list(all_msg_ids)
 
     def fetch_message_full(self, msg_id):
         try:
@@ -297,6 +330,10 @@ class GmailForensicExporter:
         return ""
 
     def save_forensic_artifact(self, msg):
+        """
+        Extracts and saves metadata, bodies, and attachments for a message.
+        Pillar 4: Dual-Stream Separation (Archive vs Narrative).
+        """
         msg_id = msg['id']
         headers = msg['payload'].get('headers', [])
         
@@ -306,22 +343,22 @@ class GmailForensicExporter:
         recipient = self.get_header(headers, 'To')
         date_str = self.get_header(headers, 'Date')
         
-        # 1. Save Full Metadata JSON
-        meta_path = os.path.join(self.export_dir, 'bodies', f"{msg_id}.meta.json")
+        # 1. ARCHIVE STREAM: Save Full Metadata JSON
+        meta_path = os.path.join(self.archive_dir, 'metadata', f"{msg_id}.meta.json")
         with open(meta_path, 'w') as f:
             json.dump(msg, f, indent=2)
         self.add_to_manifest(meta_path)
 
-        # 2. Extract and Save Body
+        # 2. NARRATIVE STREAM: Extract and Save Body for readability
         parts = self.get_message_parts(msg['payload'])
         for mime_type, content in parts.items():
             ext = 'txt' if mime_type == 'text/plain' else 'html'
-            body_path = os.path.join(self.export_dir, 'bodies', f"{msg_id}.{ext}")
+            body_path = os.path.join(self.narrative_dir, 'metadata', f"{msg_id}.{ext}")
             with open(body_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             self.add_to_manifest(body_path)
 
-        # 3. Handle Attachments
+        # 3. ARCHIVE STREAM: Handle Attachments
         all_attachments_saved = True
         if self.config['export']['download_attachments']:
             results = self.download_attachments(msg_id, msg['payload'])
@@ -361,6 +398,10 @@ class GmailForensicExporter:
         return results
 
     def save_attachment(self, msg_id, part):
+        """
+        Downloads a single attachment and saves it with forensic naming.
+        Pillar 5: Cross-validation of size.
+        """
         filename = part['filename']
         ext = os.path.splitext(filename)[1].lower()
         
@@ -372,10 +413,10 @@ class GmailForensicExporter:
             return True # Not a failure, just skipped
 
         body = part.get('body', {})
-        size = body.get('size', 0)
+        expected_size = body.get('size', 0)
         
-        if size > max_size:
-            self.log.warning(f"Skipping large attachment: {filename} ({size} bytes)")
+        if expected_size > max_size:
+            self.log.warning(f"Skipping large attachment: {filename} ({expected_size} bytes)")
             return True
 
         attachment_id = body.get('attachmentId')
@@ -388,9 +429,17 @@ class GmailForensicExporter:
             attachment = self._execute_with_retry(request)
             data = base64.urlsafe_b64decode(attachment['data'])
             
-            # Save to attachments/msg_id_filename
+            # Pillar 5: Size Verification
+            actual_size = len(data)
+            if actual_size != expected_size:
+                err_msg = f"Size mismatch for {filename}: Expected {expected_size}, got {actual_size}"
+                self.log.error(err_msg)
+                self.log_error_to_db(msg_id, "CORRUPTION_ERROR", err_msg)
+                # We save it anyway but log the error
+            
+            # ARCHIVE STREAM: Save raw attachment
             safe_filename = "".join([c for c in filename if c.isalnum() or c in ('.','_','-')]).strip()
-            save_path = os.path.join(self.export_dir, 'attachments', f"{msg_id}_{safe_filename}")
+            save_path = os.path.join(self.archive_dir, 'attachments', f"{msg_id}_{safe_filename}")
             
             with open(save_path, 'wb') as f:
                 f.write(data)
@@ -423,7 +472,7 @@ class GmailForensicExporter:
                 if start <= item_dt <= end:
                     item['tags'].append(win_cfg.get('tag', win_name.upper()))
 
-        csv_path = os.path.join(self.export_dir, 'timelines', 'forensic_timeline.csv')
+        csv_path = os.path.join(self.narrative_dir, 'timelines', 'forensic_timeline.csv')
         import csv
         with open(csv_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=["date", "from", "to", "subject", "id", "threadId", "tags"])
@@ -437,7 +486,7 @@ class GmailForensicExporter:
         self.log.info(f"Timeline generated at {csv_path}")
 
         # Also generate a simple Markdown version for quick review
-        md_path = os.path.join(self.export_dir, 'timelines', 'forensic_timeline.md')
+        md_path = os.path.join(self.narrative_dir, 'timelines', 'forensic_timeline.md')
         with open(md_path, 'w', encoding='utf-8') as f:
             f.write("# Forensic Email Timeline\n\n")
             for item in timeline_data:
@@ -455,7 +504,11 @@ class GmailForensicExporter:
         self.generate_summary_report(timeline_data)
 
     def generate_summary_report(self, timeline_data):
-        report_path = os.path.join(self.export_dir, 'reports', 'export_summary.md')
+        """
+        Generates a final summary report including success counts and failure details.
+        Pillar 3: Negative Auditability via Search Space documentation.
+        """
+        report_path = os.path.join(self.narrative_dir, 'reports', 'export_summary.md')
         critical_count = sum(1 for item in timeline_data if item['tags'])
         
         # Fetch errors for the report
@@ -470,14 +523,17 @@ class GmailForensicExporter:
             f.write(f"- **Export ID:** `{self.manifest['export_id']}`\n")
             f.write(f"- **Timestamp:** {self.manifest['export_timestamp_utc']}\n")
             f.write(f"- **Total Messages Successfully Exported:** {len(timeline_data)}\n")
-            f.write(f"- **Total Failures:** {len(errors)}\n")
+            f.write(f"- **Total Failures recorded:** {len(errors)}\n")
             f.write(f"- **Critical Window Matches:** {critical_count}\n\n")
             
-            f.write("## Search Parameters\n")
-            f.write(f"```yaml\n{yaml.dump(self.config['targets'], default_flow_style=False)}```\n\n")
+            f.write("## Search Space (Negative Auditability)\n")
+            f.write("The following queries were executed to define the collection boundaries:\n")
+            for q in self.manifest.get('search_parameters', {}).get('queries', []):
+                f.write(f"- `{q}`\n")
+            f.write("\n")
             
             if errors:
-                f.write("## Extraction Failures\n")
+                f.write("## Extraction Failures & Warnings\n")
                 f.write("| Gmail ID | Error Type | Message |\n")
                 f.write("| --- | --- | --- |\n")
                 for eid, etype, emsg in errors:
@@ -485,7 +541,7 @@ class GmailForensicExporter:
                 f.write("\n")
 
             if critical_count > 0:
-                f.write("## Critical Findings\n")
+                f.write("## Critical Findings (Tagged)\n")
                 for item in timeline_data:
                     if item['tags']:
                         f.write(f"- {item['date']}: {item['subject']} ([{', '.join(item['tags'])}])\n")
