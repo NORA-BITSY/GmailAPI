@@ -47,6 +47,12 @@ targets:
     - "2025CF000089"
     - "46-CR-25-845"
     - "2025FA000041"
+  keywords:
+    - retaliation
+    - conflict
+    - settlement
+    - "google meet"
+    - "video conference"
 
 critical_windows:
   retaliation_window:
@@ -59,7 +65,7 @@ critical_windows:
     tag:   "GOOGLE_MEET_CONTEXT"
 
 reliability:
-  cache_db: /home/ubuntu/export_cache.db
+  cache_db: export_cache.db
   rate_limit_units_per_second: 200
   max_retries: 5
   batch_size: 100
