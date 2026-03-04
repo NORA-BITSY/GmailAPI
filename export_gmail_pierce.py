@@ -60,11 +60,17 @@ class ForensicLogger:
         self._log_json("WARNING", msg)
 
 class GmailForensicExporter:
+    """
+    Main forensic engine for targeted Gmail extraction.
+    Handles search, authentication, data integrity, and reporting.
+    """
     def __init__(self, config_path, export_dir):
+        """Initializes the exporter, sets up directories, and loads configuration."""
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
         self.export_dir = export_dir
+        # Ensure the forensic structure is present
         os.makedirs(self.export_dir, exist_ok=True)
         os.makedirs(os.path.join(self.export_dir, 'bodies'), exist_ok=True)
         os.makedirs(os.path.join(self.export_dir, 'attachments'), exist_ok=True)
@@ -77,6 +83,7 @@ class GmailForensicExporter:
         
         self.creds = None
         self.service = None
+        # Initialize the global manifest
         self.manifest = {
             "export_id": str(uuid.uuid4()),
             "export_timestamp_utc": datetime.now(timezone.utc).isoformat(),
